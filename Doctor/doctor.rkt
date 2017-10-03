@@ -1,6 +1,6 @@
 #lang scheme/base
 (define (visit-doctor name)
-  (define (doctor-driver-loop name)
+  (define (doctor-driver-loop name phrase-history is-first-iteration)
     (define (reply user-response)
       (define (change-person phrase)
         (many-replace '((i you) (me you) (am are) (my your) (are am) (you i) (your my)) phrase)
@@ -37,12 +37,22 @@
           )
         )
       )
-      
-      (cond
-        ((fifty-fifty)
-          (append (qualifier) (change-person user-response))
+      (let
+        (
+          (gen-case (if is-first-iteration (random 2) (random 3)))
         )
-        (else (hedge))
+        (cond
+          ((= gen-case 0)
+            (append (qualifier) (change-person user-response))
+          )
+          ((= gen-case 1) (hedge))
+          ((= gen-case 2)
+            (append
+              '(earlier you said that)
+              (change-person (pick-random phrase-history))
+            )
+          )
+        )
       )
     )
 
@@ -56,7 +66,7 @@
         )
         (else
           (print (reply user-response))
-          (doctor-driver-loop name)
+          (doctor-driver-loop name (cons user-response phrase-history) #f)
         )
       )
     )
@@ -64,11 +74,7 @@
 
   (printf "Hello, ~a!\n" name)
   (print '(what seems to be the trouble?))
-  (doctor-driver-loop name)
-)
-
-(define (fifty-fifty)
-  (= (random 2) 0)
+  (doctor-driver-loop name '() #t)
 )
 
 (define (pick-random lst)

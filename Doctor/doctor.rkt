@@ -38,21 +38,68 @@
           )
         )
       )
+
+      (define keywords-answers-struct
+        '(
+          (
+            (depressed suicide)
+            (
+              (when you feel depressed, go out for ice cream)
+              (depression is a disease that can be treated)
+            )
+          )
+          (
+            (mother father parents)
+            (
+              (tell me more about your *)
+              (why do you feel that way about your *?)
+            )
+          )
+        )
+      )
+
+      (define (get-keywords-phrase user-response)
+        (ormap
+          (lambda (sublist) 
+            (let
+              (
+                (founded-keyword
+                  (ormap
+                    (lambda (keyword) (if (member keyword user-response) keyword #f))
+                    (car sublist)
+                  )
+                )
+              )
+              (
+                if (not (equal? founded-keyword #f))
+                  (many-replace (list(list '* founded-keyword)) (pick-random (cadr sublist)))
+                  #f
+              )
+            )
+          )
+          keywords-answers-struct)
+      )
+      
       (let
         (
           (gen-case (if is-first-iteration (random 2) (random 3)))
+          (keyword-answer (get-keywords-phrase user-response))
         )
-        (cond
-          ((= gen-case 0)
-            (append (qualifier) (change-person user-response))
-          )
-          ((= gen-case 1) (hedge))
-          ((= gen-case 2)
-            (append
-              '(earlier you said that)
-              (change-person (pick-random phrase-history))
+        (
+          if (not (equal? keyword-answer #f))
+            keyword-answer
+            (cond
+              ((= gen-case 0)
+                (append (qualifier) (change-person user-response))
+              )
+              ((= gen-case 1) (hedge))
+              ((= gen-case 2)
+                (append
+                  '(earlier you said that)
+                  (change-person (pick-random phrase-history))
+                )
+              )
             )
-          )
         )
       )
     )

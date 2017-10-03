@@ -1,4 +1,5 @@
 #lang scheme/base
+(require racket/list)
 (define (visit-doctor)
   (define (doctor-driver-loop name phrase-history is-first-iteration)
     (define (reply user-response)
@@ -65,8 +66,8 @@
           (print '(see you next week))
         )
         (else
-          (print (reply user-response))
-          (doctor-driver-loop name (cons user-response phrase-history) #f)
+          (print (reply (flatten user-response)))
+          (doctor-driver-loop name (cons (flatten user-response) phrase-history) #f)
         )
       )
     )
@@ -76,7 +77,7 @@
     (
       if (equal? name 'suppertime)
         (print '(it is my suppertime wait me for 30 minutes))
-        (
+        (begin
           (printf "Hello, ~a!\n" name)
           (print '(what seems to be the trouble?))
           (doctor-driver-loop name '() #t)

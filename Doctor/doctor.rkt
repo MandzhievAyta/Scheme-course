@@ -1,5 +1,5 @@
 #lang scheme/base
-(define (visit-doctor name)
+(define (visit-doctor)
   (define (doctor-driver-loop name phrase-history is-first-iteration)
     (define (reply user-response)
       (define (change-person phrase)
@@ -72,9 +72,24 @@
     )
   )
 
-  (printf "Hello, ~a!\n" name)
-  (print '(what seems to be the trouble?))
-  (doctor-driver-loop name '() #t)
+  (let ((name (ask-patient-name)))
+    (
+      if (equal? name 'suppertime)
+        (print '(it is my suppertime wait me for 30 minutes))
+        (
+          (printf "Hello, ~a!\n" name)
+          (print '(what seems to be the trouble?))
+          (doctor-driver-loop name '() #t)
+          (visit-doctor)
+        )
+    )
+  )
+)
+
+(define (ask-patient-name)
+  (print '(next!))
+  (print '(who are you?))
+  (car(read))
 )
 
 (define (pick-random lst)
@@ -101,4 +116,4 @@
     )
   )
 )
-(visit-doctor 'Ayta)
+(visit-doctor)

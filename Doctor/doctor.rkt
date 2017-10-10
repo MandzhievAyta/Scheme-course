@@ -87,30 +87,6 @@
   )
 )
 
-(define (get-keywords-phrase user-response)
-  (ormap
-    (lambda (sublist) 
-      (let
-        (
-          (founded-keyword
-            (ormap
-              (lambda (keyword) (if (member keyword user-response) keyword #f))
-              (car sublist)
-            )
-          )
-        )
-        (
-          if (not (equal? founded-keyword #f))
-            (many-replace (list(list '* founded-keyword)) (pick-random (cadr sublist)))
-            #f
-        )
-      )
-    )
-    keywords-answers-struct
-  )
-)
-
-
 (define (get-keywords-list struct)
   (reverse
     (foldl
@@ -121,16 +97,95 @@
   )
 )
 
+(define (keyword-dependent-answer keywords-answers-struct sent)
+
+  (define (find-max-positions list)
+    (define (loop value list result cur-pos)
+      (if (empty? list)
+        result
+        (
+          if (= value (car list))
+            (loop value (cdr list) (cons cur-pos result) (+ 1 cur-pos))
+            (loop value (cdr list) result (+ 1 cur-pos))
+        )
+      )
+    )
+    (let ((max-value (apply max list)))
+      (if (= max-value 0)
+        '()
+        (reverse (loop max-value list '() 0))
+      )
+    )
+  )
+  (define (find-most-frequent-group-idx group-list sent)
+    (if (or (null? sent) (null? group-list)) -1
+      (let
+        (
+          (
+            max-positions
+            (
+              find-max-positions
+                (map
+                  (
+                    lambda (group) (
+                      length (filter (lambda (word) (member word group)) sent)
+                    )
+                  )
+                  group-list
+                )
+            )
+          )
+        )
+        (
+          if (null? max-positions) -1 (pick-random max-positions)
+        )
+      )
+    )
+  )
+  
+  (let*
+    (
+      (
+        keywords-list
+        (get-keywords-list keywords-answers-struct)
+      )
+      (
+        most-frequent-group-idx
+        (find-most-frequent-group-idx keywords-list sent)
+      )
+    )
+    (
+      if (= most-frequent-group-idx -1) '()
+        (
+          let*
+          (
+            (
+              most-frequent-group
+              (list-ref keywords-list most-frequent-group-idx)
+            )
+            (
+              most-frequent-word-in-group-idx
+              (find-most-frequent-group-idx (map list most-frequent-group) sent)
+            )  
+          )
+          (
+            many-replace (list(list '* (list-ref most-frequent-group most-frequent-word-in-group-idx))) (pick-random (cadr (list-ref keywords-answers-struct most-frequent-group-idx)))
+          )
+        )
+    )
+  )   
+)
+
 (define (visit-doctor)
   (define (doctor-driver-loop name phrase-history is-first-iteration)
     (define (reply user-response)
       (let
         (
           (gen-case (if is-first-iteration (random 2) (random 3)))
-          (keyword-answer (get-keywords-phrase user-response))
+          (keyword-answer (keyword-dependent-answer keywords-answers-struct user-response))
         )
         (
-          if (not (equal? keyword-answer #f))
+          if (not (null? keyword-answer))
             keyword-answer
             (cond
               ((= gen-case 0)
@@ -180,72 +235,7 @@
 
 
 
-;(visit-doctor)
-(define (collect-similar lst)
-  (hash->list
-    (foldl
-      ( lambda (key ht) (hash-update ht key add1 0) )
-      '#hash()
-      lst
-    )
-  )
-)
+(visit-doctor)
 
-(define (find-most-frequent-group group-list sent)
-  (map
-    (
-      lambda (group) (
-        length (filter (lambda (word) (member word group)) sent)
-      )
-    )
-    group-list
-  )
-)
-(get-keywords-list keywords-answers-struct)
-(define (find-max-positions list)
-  (define (loop value list result cur-pos)
-    (if (empty? list)
-      result
-      (
-        if (= value (car list))
-          (loop value (cdr list) (cons cur-pos result) (+ 1 cur-pos))
-          (loop value (cdr list) result (+ 1 cur-pos))
-      )
-    )
-  )
-  (reverse (loop (apply max list) list '() 0))
-)
-(let*
-  (
-    (
-      sent
-      '( mother father mother depressed suicide suicide)
-    )
-    (
-      keywords-list
-      (get-keywords-list keywords-answers-struct)
-    )
-    (
-      frequency
-      (find-most-frequent-group
-        keywords-list
-        sent  
-      )
-    )
-    (
-      most-frequent-group-idx
-      (pick-random (find-max-positions frequency))
-    )
-    (
-      most-frequent-group
-      (list-ref keywords-list most-frequent-group-idx)
-    )
-    (
-      most-frequent-word-in-group-idx
-      (pick-random (find-max-positions (find-most-frequent-group (map list most-frequent-group) sent)))
-    )
-  )
-  (   
-    many-replace (list(list '* (list-ref most-frequent-group most-frequent-word-in-group-idx))) (pick-random (cadr (list-ref keywords-answers-struct most-frequent-group-idx)))
-  )
-)
+
+

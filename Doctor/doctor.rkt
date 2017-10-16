@@ -51,7 +51,7 @@
   )
 )
 
-(define (hedge)
+(define (hedge sent keywords-list keywords-answers-struct is-first-iteration phrase-history)
   (pick-random
     '(
       (please go on)
@@ -97,7 +97,13 @@
   )
 )
 
-(define (keyword-dependent-answer keywords-answers-struct sent)
+(define (check-keyword-entrance sent keywords-list is-first-iteration)
+  (let ((flat-keywords-list (flatten keywords-list)))
+    (ormap (lambda (word) (member word flat-keywords-list)) sent)
+  )
+)
+
+(define (keyword-dependent-answer sent keywords-list keywords-answers-struct is-first-iteration phrase-history)
 
   (define (find-max-positions list)
     (define (loop value list result cur-pos)
@@ -113,7 +119,7 @@
     (let ((max-value (apply max list)))
       (if (= max-value 0)
         '()
-        (reverse (loop max-value list '() 0))
+        (loop max-value list '() 0)
       )
     )
   )
@@ -176,31 +182,58 @@
   )   
 )
 
+(define predicate-answer-struct
+  (list
+    (list
+      (lambda (sent keywords-list is-first-iteration) (< (length sent) 3))
+      2
+      (lambda (sent keywords-list keywords-answers-struct is-first-iteration phrase-history) '(Can you say more ?))
+    )
+    (list
+      check-keyword-entrance
+      3
+      keyword-dependent-answer
+    )
+    (list
+      (lambda (sent keywords-list is-first-iteration) #t)
+      1
+      hedge
+    )
+    (list
+      (lambda (sent keywords-list is-first-iteration) #t)
+      1
+      (lambda (sent keywords-list keywords-answers-struct is-first-iteration phrase-history) (append (qualifier) (change-person sent)))
+    )
+    (list
+      (lambda (sent keywords-list is-first-iteration) (not is-first-iteration))
+      1
+      (lambda (sent keywords-list keywords-answers-struct is-first-iteration phrase-history) (append '(earlier you said that) (change-person (pick-random phrase-history))))
+    )
+  )
+)
+
+(define (get-answer-func phrase predicate-answer-struct is-first-iteration)
+  (let*
+    (
+      (
+        filtered-struct (filter (lambda (elem) ((car elem) phrase (get-keywords-list keywords-answers-struct) is-first-iteration)) predicate-answer-struct)
+      )
+      (
+        max-weight (apply max (map (lambda (elem) (cadr elem)) filtered-struct))
+      )
+      (
+        choise (pick-random (filter (lambda (elem) (= (cadr elem) max-weight)) filtered-struct))
+      )
+    )
+    (list-ref choise 2)
+  )
+)
+
+
 (define (visit-doctor)
   (define (doctor-driver-loop name phrase-history is-first-iteration)
     (define (reply user-response)
-      (let
-        (
-          (gen-case (if is-first-iteration (random 2) (random 3)))
-          (keyword-answer (keyword-dependent-answer keywords-answers-struct user-response))
-        )
-        (
-          if (not (null? keyword-answer))
-            keyword-answer
-            (cond
-              ((= gen-case 0)
-                (append (qualifier) (change-person user-response))
-              )
-              ((= gen-case 1) (hedge))
-              ((= gen-case 2)
-                (append
-                  '(earlier you said that)
-                  (change-person (pick-random phrase-history))
-                )
-              )
-            )
-        )
-      )
+      (get-answer-func user-response predicate-answer-struct is-first-iteration)
     )
 
     (newline)
@@ -212,7 +245,7 @@
           (print '(see you next week))
         )
         (else
-          (print (reply (flatten user-response)))
+          (print ((reply (flatten user-response)) user-response (get-keywords-list keywords-answers-struct) keywords-answers-struct is-first-iteration phrase-history))
           (doctor-driver-loop name (cons (flatten user-response) phrase-history) #f)
         )
       )

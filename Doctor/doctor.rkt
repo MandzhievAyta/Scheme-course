@@ -212,20 +212,38 @@
   )
 )
 
+;(define (get-answer-func phrase predicate-answer-struct is-first-iteration)
+;  (let*
+;    (
+;      (
+;        filtered-struct (filter (lambda (elem) ((car elem) phrase (get-keywords-list keywords-answers-struct) is-first-iteration)) predicate-answer-struct)
+;      )
+;      (
+;        max-weight (apply max (map (lambda (elem) (cadr elem)) filtered-struct))
+;      )
+;      (
+;        choise (pick-random (filter (lambda (elem) (= (cadr elem) max-weight)) filtered-struct))
+;      )
+;    )
+;    (list-ref choise 2)
+;  )
+;)
 (define (get-answer-func phrase predicate-answer-struct is-first-iteration)
+  (define (get-picked-strategy choise filtered-struct)
+    (let((new-choise (- choise (cadr (car filtered-struct)))))
+      (if (< new-choise 0) (caddr (car filtered-struct)) (get-picked-strategy new-choise (cdr filtered-struct)))
+    )
+  )
   (let*
     (
       (
         filtered-struct (filter (lambda (elem) ((car elem) phrase (get-keywords-list keywords-answers-struct) is-first-iteration)) predicate-answer-struct)
       )
       (
-        max-weight (apply max (map (lambda (elem) (cadr elem)) filtered-struct))
-      )
-      (
-        choise (pick-random (filter (lambda (elem) (= (cadr elem) max-weight)) filtered-struct))
+        sum-weight (apply + (map (lambda (elem) (cadr elem)) filtered-struct))
       )
     )
-    (list-ref choise 2)
+    (get-picked-strategy (random sum-weight) filtered-struct)
   )
 )
 

@@ -1,28 +1,6 @@
 #lang scheme/base
 
-(define (dedupe e)
-  (if (null? e) '()
-      (cons 
-        (car e) 
-        (dedupe (filter (lambda (x) (not (equal? x (car e)))) (cdr e)))
-      )
-  )
-)
-
-(define (checker clr-g1 clr-g2)
-  (define (check-edges label1 label2)
-    (if 
-      (equal? 
-        (map (lambda(x) (car x)) (filter (lambda(x) (equal? label1 (cadr x))) clr-g1))
-        (map (lambda(x) (car x)) (filter (lambda(x) (equal? label2 (cadr x))) clr-g2)) 
-      )
-      #t
-      #f
-    )
-  )
-  (andmap check-edges (dedupe (map (lambda(x) (cadr x)) clr-g1)) (dedupe (map (lambda(x) (cadr x)) clr-g2)))
-)
-
+;создает список всевозможных комбинаций пар элементов из двух списков (каждая пара содержит элементы из разных списков)
 (define (combinations-2 list1 list2)
   (define (loop l1 l2 res)
     (cond
@@ -34,6 +12,7 @@
   (loop list1 list2 '())
 )
 
+;генератор списка от start до end не включая
 (define (range-list start end)
   (define (loop i res)
     (if (= i start)
@@ -44,6 +23,7 @@
   (loop (- end 1) '())
 )
 
+;функция, генерирующая граф-цепочку, где num - количество вершин
 (define (gen-chain num)
   (define (loop i res)
     (if (= i 0)
@@ -54,6 +34,7 @@
   (loop num '())
 )
 
+;функция, генерирующая граф-цикл, num - количество вершин
 (define (gen-cycle num)
   (define (loop i res)
     (if (= i 0)
@@ -64,6 +45,7 @@
   (loop (- num 1) (list (list (- num 1) 0)))
 )
 
+;функция, генерирующая полный граф, num - количество вершин
 (define (gen-complete num)
   (define (loop i j res)
     (cond
@@ -75,17 +57,24 @@
   (loop num (- num 1) '())
 )
 
+;функция, генерирующая двудольный граф, в котором все вершин из одной группы, соеденены со всеми вершинами из другой
+;параметры - количество вершин первой группы и список вершин второй группы
 (define (gen-bipartite first-group second-group)
   (combinations-2 (range-list 0 first-group) (range-list first-group (+ first-group second-group)))
 )
 
-(define (print-chains num)
+;генерирует цепочки длиной от 1 до num и печатает их в input-file для генетического алгоритма, а также записывает эталонный ответ в result-file
+(define (print-chains num input-file result-file)
   (define (loop i)
     (if (= i num)
       (void)
       (begin
-        (printf "~a ~a ~a~n" (gen-chain i) #t 2)
-        (printf "~a ~a ~a~n" (gen-chain i) #f 1)
+        ;(printf "~a ~a ~a~n" (gen-chain i) #t 2)
+        ;(printf "~a ~a ~a~n" (gen-chain i) #f 1)
+        (fprintf input-file "~a~n~a~n" (gen-chain i) 2)
+        (fprintf result-file "~a~n~a~n" #t 2)
+        (fprintf input-file "~a~n~a~n" (gen-chain i) 1)
+        (fprintf result-file "~a~n" #f)
         (loop (+ i 1))
       )
     )
@@ -93,13 +82,19 @@
   (loop 1)
 )
 
-(define (print-cycle num)
+;генерирует циклические графы с количеством вершин от 1 до num и печатает их в input-file для генетического алгоритма,
+; а также записывает эталонный ответ в result-file
+(define (print-cycle num input-file result-file)
   (define (loop i)
     (if (= i num)
       (void)
       (begin
-        (printf "~a ~a ~a~n" (gen-cycle i) #t (+ 2 (modulo i 2)))
-        (printf "~a ~a ~a~n" (gen-cycle i) #f 1)
+        ;(printf "~a ~a ~a~n" (gen-cycle i) #t (+ 2 (modulo i 2)))
+        ;(printf "~a ~a ~a~n" (gen-cycle i) #f 1)
+        (fprintf input-file "~a~n~a~n" (gen-cycle i) (+ 2 (modulo i 2)))
+        (fprintf result-file "~a~n~a~n" #t (+ 2 (modulo i 2)))
+        (fprintf input-file "~a~n~a~n" (gen-cycle i) 1)
+        (fprintf result-file "~a~n" #f )
         (loop (+ i 1))
       )
     )
@@ -107,13 +102,19 @@
   (loop 3)
 )
 
-(define (print-complete num)
+;генерирует полные графы с количеством вершин от 4 до num и печатает их в input-file для генетического алгоритма,
+; а также записывает эталонный ответ в result-file
+(define (print-complete num input-file result-file)
   (define (loop i)
     (if (= i num)
       (void)
       (begin
-        (printf "~a ~a ~a~n" (gen-complete i) #t (+ ( - i 1) (modulo i 2)))
-        (printf "~a ~a ~a~n" (gen-complete i) #f (- i 2))
+        ;(printf "~a ~a ~a~n" (gen-complete i) #t (+ ( - i 1) (modulo i 2)))
+        ;(printf "~a ~a ~a~n" (gen-complete i) #f (- i 2))
+        (fprintf input-file "~a~n~a~n" (gen-complete i) (+ ( - i 1) (modulo i 2)))
+        (fprintf result-file "~a~n~a~n" #t (+ ( - i 1) (modulo i 2)))
+        (fprintf input-file "~a~n~a~n" (gen-complete i) (- i 2))
+        (fprintf result-file "~a~n" #f )
         (loop (+ i 1))
       )
     )
@@ -121,13 +122,19 @@
   (loop 3)
 )
 
-(define (print-bipartite num)
+;генерирует двудольные графы с количеством вершин от 6 до num + num/2(в первой группе i, а во второй i/2 вершин) и
+; печатает их в input-file для генетического алгоритма, а также записывает эталонный ответ в result-file
+(define (print-bipartite num input-file result-file)
   (define (loop i)
     (if (= i num)
       (void)
       (begin
-        (printf "~a ~a ~a~n" (gen-bipartite i (truncate (/ i 2))) #t i)
-        (printf "~a ~a ~a~n" (gen-bipartite i (truncate (/ i 2))) #f (- i 2))
+        ;(printf "~a ~a ~a~n" (gen-bipartite i (truncate (/ i 2))) #t i)
+        ;(printf "~a ~a ~a~n" (gen-bipartite i (truncate (/ i 2))) #f (- i 2))
+        (fprintf input-file "~a~n~a~n" (gen-bipartite i (truncate (/ i 2))) i)
+        (fprintf result-file "~a~n~a~n" #t i)
+        (fprintf input-file "~a~n~a~n" (gen-bipartite i (truncate (/ i 2))) (- i 2))
+        (fprintf result-file "~a~n" #f )
         (loop (+ i 1))
       )
     )
@@ -135,12 +142,14 @@
   (loop 4)
 )
 
-;(printf "~a~n" (gen-chain 5))
-;(printf "~a~n" (gen-cycle 5))
-;(printf "~a~n" (gen-complete 5))
-;(printf "~a" (gen-bipartite 3 2))
-(print-chains 10)
-(print-cycle 10)
-(print-complete 10)
-(print-bipartite 6)
-(checker '(((0 1) 1) ((1 2) 2) ((2 3) 1)) '(((0 1) 3) ((1 2) 4) ((2 3) 3)))
+;открываем файлы и записываем туда сгенерированные тесты
+(let ((input-file (open-output-file "input_file.txt")) (result-file (open-output-file "result_file.txt")))
+  (begin
+    (print-chains 10 input-file result-file)
+    (print-cycle 10 input-file result-file)
+    (print-complete 10 input-file result-file)
+    (print-bipartite 6 input-file result-file)
+    (close-output-port input-file)
+    (close-output-port result-file)
+  )
+)

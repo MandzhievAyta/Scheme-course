@@ -2,14 +2,14 @@
 (require scheme/list)
 (require scheme/math)
 
-(define max_generations 60)
-(define population_size 20)
-(define mutation_probability .7)
-(define mutation_severity .05)
-(define cross_probability .3)
-(define crossing_quota (max (min 3 population_size) (exact-round (* .8 population_size))))
-(define selection_quota (max (min 2 population_size) (exact-round (* .4 population_size))))
-(define keep_quota (max 1 (exact-round (* .1 population_size))))
+(define population_size 20)                                         ;Размер популяции
+(define max_generations 60)                                         ;Максимальное количество поколений
+(define cross_probability .3)                                       ;Вероятность скрещивания
+(define crossing_part (exact-round (* .8 population_size)))         ;Какая часть популяции участвует в скрещивании
+(define mutation_probability .7)                                    ;Вероятность мутировании хромосомы
+(define mutate_colour_prob .05)                                     ;Вероятность мутации одного цвета хромосомы
+(define selection_part (exact-round (* .4 population_size)))        ;Какая часть популяции участвует в переходе в след. поколение
+(define unmutable_part (exact-round (* .1 population_size)))        ;Какая часть популяции гарантированно не изменяется
 
 ;получить список всех вершин
 (define (get-all-vertices i ht)
@@ -30,7 +30,7 @@
         (lambda (i) (+ (random colours) 1))
     )
 )
-;Генерировать начальную популяцию
+;Сгенерировать начальную популяцию
 (define (generate-initial-population colours)
     (build-vector
         population_size
@@ -65,6 +65,7 @@
     )
 )
 
+; получить вектор, состоящий из количества конфликтов для каждой хромосомы популяции.
 (define (get-conflicts-all-chromosomes population)
     (build-vector
         (vector-length population)
@@ -72,28 +73,28 @@
     )
 )
 
+; скрещивание двух хросом (выбирается точка скрещивания и первая часть берется и второй хромосомы, а вторая из первой)
 (define (cross-chromosome a b)
-    (let ((tap (vector-ref vertices (random vertices-amount))))
+    (let ((cross_point (random edges-amount)))
         (build-vector
             edges-amount
             (lambda (i)
-                (let ((edge (vector-ref graph i)))
-                    (if (or (equal? tap (car edge)) (equal? tap (cadr edge)))
-                        (vector-ref b i)
-                        (vector-ref a i)
-                    )
+                (if (< i cross_point)
+                    (vector-ref b i)
+                    (vector-ref a i)
                 )
             )
         )
     )
 )
 
+; Мутировать каждый цвет хромосомы с заданной вероятностью
 (define (mutate-chromosome colours chromosome)
     (build-vector
         edges-amount
         (lambda (i)
             (cond
-                ((< (random) mutation_severity)
+                ((< (random) mutate_colour_prob)
                 (+ 1 (random colours)))
                 (else (vector-ref chromosome i)))
         )
@@ -128,23 +129,19 @@
         )
         (cond
             (
-                (<= remaining_generations 0)
+                (<= remaining_generations 0)                                            ;Если закончился лимит поколений - возвращаем результат
                 (if (= 0 bestscore)
                     (vector-ref population best)
                     '()
                 )
             )
             (
-                (> bestscore 0)
+                (> bestscore 0)                                                         ;Если еще не получили раскраску - продолжаем
                 (let*
                     (
                         (
-                            sorted
-                            (list->vector (sort (range (vector-length population)) < #:key (lambda (i) (vector-ref scores i))))
-                        )
-                        (
                             next
-                            (build-vector
+                            (build-vector                                               ;Генерация следующего поколения
                                 population_size
                                 (lambda (i)
                                     (let
@@ -152,22 +149,22 @@
                                             (
                                                 chromosome
                                                 (cond
-                                                    ((< i keep_quota)
-                                                        (vector-ref population (vector-ref sorted i))
+                                                    ((< i unmutable_part)               ;Не меняем определунную часть хромосом
+                                                        (vector-ref population i)
                                                     )
-                                                    ((< (random) cross_probability)
+                                                    ((< (random) cross_probability)     ;Получение новой особи путем скрещивания старых
                                                         (cross-chromosome
-                                                            (vector-ref population (vector-ref sorted (random crossing_quota)))
-                                                            (vector-ref population (vector-ref sorted (random crossing_quota)))
+                                                            (vector-ref population (random crossing_part))
+                                                            (vector-ref population (random crossing_part))
                                                         )
                                                     )
-                                                    (else
-                                                        (vector-ref population (vector-ref sorted (random selection_quota)))
+                                                    (else                               ;Если не скрещиванием, то выбираем рандомно
+                                                        (vector-ref population (random selection_part))
                                                     )
                                                 )
                                             )
-                                        )
-                                        (if (and (>= i keep_quota) (< (random) mutation_probability))
+                                        )                                               ;Мутируем
+                                        (if (and (>= i unmutable_part) (< (random) mutation_probability))
                                             (mutate-chromosome colours chromosome)
                                             chromosome
                                         )
@@ -176,11 +173,9 @@
                             )
                         )
                     )
-                    (cond ((< bestscore old_best)
-                        (next-generation colours next bestscore max_generations))
-                        (else
-                            (next-generation colours next old_best (sub1 remaining_generations))
-                        )
+                    (if (< bestscore old_best)
+                        (next-generation colours next bestscore max_generations)        ;Если результат улучшился, то обновляем счетчик поколений
+                        (next-generation colours next old_best (- remaining_generations 1))
                     )
                 )
             )
@@ -191,6 +186,7 @@
     )
 )
 
+;Запуск генетического алгоритма
 (define (genetic-solve colours)
     (next-generation
         colours
@@ -227,7 +223,6 @@
 )
 ;Пытаемся найти лучшее решение, путем бинарного поиска, каждый раз пытаясь решить задачу генетическим алгоритмом.
 (define (find-better-solution min_colours max-colours upper_answer)
- (begin ;(printf "LOL~aLOL" upper_answe.)
     (if (>= (+ 1 min_colours) max-colours)
         (cons #t upper_answer)
         (let*
@@ -241,23 +236,40 @@
             )
         )
     )
- )
+)
+
+(define (find-better-solution-linear amnt-colours prev_answer)
+    (let*
+        (
+            (answer (genetic-solve amnt-colours))
+        )
+        (if (null? answer)
+            (cons #t prev_answer)
+            (find-better-solution-linear (- amnt-colours 1) (cons amnt-colours answer))
+        )
+    )
 )
 
 ;Решаем задачу в зависимости от того, можем ли мы раскрасить граф, как полный или нет.
 (define (solve-task)
     (let ((colours-amount-for-complete-graph (- vertices-amount (modulo (+ vertices-amount 1) 2))))
         (if (>= max-colours colours-amount-for-complete-graph)
-            (find-better-solution
-                (- max-vertices-power 1)
-                colours-amount-for-complete-graph
+            ;(find-better-solution
+            ;    (- max-vertices-power 1)
+            ;    colours-amount-for-complete-graph
+            ;    (cons colours-amount-for-complete-graph (tag-complete-graph colours-amount-for-complete-graph))
+            ;)
+            (
+                find-better-solution-linear
+                max-colours
                 (cons colours-amount-for-complete-graph (tag-complete-graph colours-amount-for-complete-graph))
             )
             ;Изначально пытаемся решить задачу с максимальным количеством цветов
             (let ((answer (genetic-solve max-colours)))
                 (if (null? answer)
                     '(#f)
-                    (find-better-solution (- max-vertices-power 1) max-colours (cons max-colours answer))
+                    ;(find-better-solution (- max-vertices-power 1) max-colours (cons max-colours answer))
+                    (find-better-solution-linear (- max-colours 1) (cons max-colours answer))
                 )
             )
         )

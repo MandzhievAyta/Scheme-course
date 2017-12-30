@@ -79,7 +79,7 @@
       )
     )
   )
-  (loop 1)
+  (loop 2)
 )
 
 ;генерирует циклические графы с количеством вершин от 1 до num и печатает их в input-file для генетического алгоритма,
@@ -111,8 +111,8 @@
       (begin
         ;(printf "~a ~a ~a~n" (gen-complete i) #t (+ ( - i 1) (modulo i 2)))
         ;(printf "~a ~a ~a~n" (gen-complete i) #f (- i 2))
-        (fprintf input-file "~a~n~a~n" (gen-complete i) (+ ( - i 1) (modulo i 2)))
-        (fprintf result-file "~a~n~a~n" #t (+ ( - i 1) (modulo i 2)))
+        (fprintf input-file "~a~n~a~n" (gen-complete i) (+ i (modulo (+ i 1) 2)))
+        (fprintf result-file "~a~n~a~n" #t (+ i (modulo (+ i 1) 2)))
         (fprintf input-file "~a~n~a~n" (gen-complete i) (- i 2))
         (fprintf result-file "~a~n" #f )
         (loop (+ i 1))

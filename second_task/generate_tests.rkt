@@ -145,10 +145,10 @@
 ;открываем файлы и записываем туда сгенерированные тесты
 (let ((input-file (open-output-file "input_file.txt")) (result-file (open-output-file "result_file.txt")))
   (begin
-    (print-chains 10 input-file result-file)
-    (print-cycle 10 input-file result-file)
-    (print-complete 10 input-file result-file)
-    (print-bipartite 6 input-file result-file)
+    (print-chains 50 input-file result-file)
+    (print-cycle 50 input-file result-file)
+    (print-complete 50 input-file result-file)
+    (print-bipartite 30 input-file result-file)
     (close-output-port input-file)
     (close-output-port result-file)
   )

@@ -1,9 +1,10 @@
 #lang scheme/base
 (require scheme/list)
 (require scheme/math)
+(define global-generation 0)
 
 (define population_size 20)                                         ;Размер популяции
-(define max_generations 60)                                         ;Максимальное количество поколений
+(define max_generations 120)                                         ;Максимальное количество поколений
 (define cross_probability .3)                                       ;Вероятность скрещивания
 (define crossing_part (exact-round (* .8 population_size)))         ;Какая часть популяции участвует в скрещивании
 (define mutation_probability .7)                                    ;Вероятность мутировании хромосомы
@@ -120,12 +121,14 @@
 )
 
 
+;генерация следующего поколения
 (define (next-generation colours population old_best remaining_generations)
     (let*
         (
             (scores (get-conflicts-all-chromosomes population))
             (best (find-best scores))
             (bestscore (vector-ref scores best))
+            (check (begin (printf "~a;~a;~a~n" colours global-generation bestscore) (set! global-generation (add1 global-generation)) 2))
         )
         (cond
             (
@@ -254,22 +257,17 @@
 (define (solve-task)
     (let ((colours-amount-for-complete-graph (- vertices-amount (modulo (+ vertices-amount 1) 2))))
         (if (>= max-colours colours-amount-for-complete-graph)
-            ;(find-better-solution
-            ;    (- max-vertices-power 1)
-            ;    colours-amount-for-complete-graph
-            ;    (cons colours-amount-for-complete-graph (tag-complete-graph colours-amount-for-complete-graph))
-            ;)
-            (
-                find-better-solution-linear
-                max-colours
+            (find-better-solution
+                (- max-vertices-power 1)
+                colours-amount-for-complete-graph
                 (cons colours-amount-for-complete-graph (tag-complete-graph colours-amount-for-complete-graph))
             )
             ;Изначально пытаемся решить задачу с максимальным количеством цветов
             (let ((answer (genetic-solve max-colours)))
                 (if (null? answer)
                     '(#f)
-                    ;(find-better-solution (- max-vertices-power 1) max-colours (cons max-colours answer))
-                    (find-better-solution-linear (- max-colours 1) (cons max-colours answer))
+                    (find-better-solution (- max-vertices-power 1) max-colours (cons max-colours answer))
+                    ;(find-better-solution-linear (- max-colours 1) (cons max-colours answer))
                 )
             )
         )
